@@ -2,10 +2,11 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <title>勤怠管理システム</title>
   <style>
     body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 40px; }
-    .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .container { max-width: 750px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
     h1 { text-align: center; margin-bottom: 4px; }
     .user-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-size: 14px; color: #555; }
     .logout-btn { background: #888; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
@@ -25,6 +26,12 @@
     tr:nth-child(even) { background: #f9f9f9; }
     .done { color: #4CAF50; font-weight: bold; }
     .none { color: #aaa; }
+    .overtime { color: #f44336; font-weight: bold; }
+    .normal { color: #2196F3; }
+    .summary { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 16px; }
+    .summary-card { background: #f5f5f5; border-radius: 8px; padding: 12px; text-align: center; }
+    .summary-card .label { font-size: 12px; color: #888; }
+    .summary-card .value { font-size: 22px; font-weight: bold; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -33,7 +40,6 @@
   <div class="user-bar">
     <span id="username-label">ログイン中: ...</span>
     <form action="/logout" method="post" style="margin:0">
-      <input type="hidden" name="_csrf" id="csrf-token">
       <button type="submit" class="logout-btn">ログアウト</button>
     </form>
   </div>
@@ -42,6 +48,20 @@
   <button class="out" id="btn-out" onclick="clockOut()">退勤</button>
   <button class="list" onclick="showList()">一覧表示</button>
   <div class="msg" id="msg"></div>
+  <div class="summary" id="summary" style="display:none">
+    <div class="summary-card">
+      <div class="label">今月の出勤日数</div>
+      <div class="value" id="work-days">0日</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">今月の総勤務時間</div>
+      <div class="value" id="total-hours">0h</div>
+    </div>
+    <div class="summary-card">
+      <div class="label">今月の残業時間</div>
+      <div class="value overtime" id="overtime-hours">0h</div>
+    </div>
+  </div>
   <div id="table-area"></div>
 </div>
 <script>
@@ -56,6 +76,12 @@ function fmt(str) {
   const hh  = String(d.getHours()).padStart(2,"0");
   const min = String(d.getMinutes()).padStart(2,"0");
   return mm+"/"+dd+" "+hh+":"+min;
+}
+function fmtMinutes(minutes) {
+  if (minutes === null || minutes === undefined) return "-";
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return h + "h" + (m > 0 ? m + "m" : "");
 }
 function setStatus(isWorking) {
   document.getElementById("btn-in").disabled  = isWorking;
@@ -78,6 +104,7 @@ async function showList() {
   const res = await fetch("/attendance/list");
   const data = await res.json();
   msg("📋 " + data.length + "件");
+
   if (data.length > 0) {
     const latest = data[0];
     setStatus(latest.clockOut === null);
@@ -85,27 +112,33 @@ async function showList() {
   } else {
     setStatus(false);
   }
-  let html = "<table><thead><tr><th>ID</th><th>出勤</th><th>退勤</th></tr></thead><tbody>";
+
+  // サマリー計算
+  const completed = data.filter(d => d.clockOut !== null);
+  const totalWork = completed.reduce((sum, d) => sum + (d.workMinutes || 0), 0);
+  const totalOvertime = completed.reduce((sum, d) => sum + (d.overtimeMinutes || 0), 0);
+  document.getElementById("work-days").textContent = completed.length + "日";
+  document.getElementById("total-hours").textContent = fmtMinutes(totalWork);
+  document.getElementById("overtime-hours").textContent = fmtMinutes(totalOvertime);
+  document.getElementById("summary").style.display = "grid";
+
+  // テーブル
+  let html = "<table><thead><tr><th>ID</th><th>出勤</th><th>退勤</th><th>勤務時間</th><th>残業</th></tr></thead><tbody>";
   data.forEach(d => {
     const outCell = d.clockOut
       ? "<span class='done'>"+fmt(d.clockOut)+"</span>"
       : "<span class='none'>未退勤</span>";
-    html += "<tr><td>"+d.id+"</td><td>"+fmt(d.clockIn)+"</td><td>"+outCell+"</td></tr>";
+    const workCell = d.workMinutes !== null
+      ? "<span class='normal'>"+fmtMinutes(d.workMinutes)+"</span>"
+      : "-";
+    const overtimeCell = d.overtimeMinutes > 0
+      ? "<span class='overtime'>"+fmtMinutes(d.overtimeMinutes)+"</span>"
+      : "<span class='normal'>なし</span>";
+    html += "<tr><td>"+d.id+"</td><td>"+fmt(d.clockIn)+"</td><td>"+outCell+"</td><td>"+workCell+"</td><td>"+overtimeCell+"</td></tr>";
   });
   html += "</tbody></table>";
   document.getElementById("table-area").innerHTML = html;
 }
-
-// CSRFトークンを取得してログアウトフォームにセット
-async function getCsrf() {
-  const res = await fetch("/csrf-token");
-  if (res.ok) {
-    const data = await res.json();
-    document.getElementById("csrf-token").value = data.token;
-  }
-}
-
-getCsrf();
 showList();
 </script>
 </body>
