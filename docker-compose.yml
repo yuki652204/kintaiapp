@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+
+  db:
+    image: postgres:15
+    container_name: kintai-db
+    environment:
+      POSTGRES_USER: tw40
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: kintai
+    ports:
+      - "5433:5432"
+
+  app:
+    build: .
+    container_name: kintai-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/kintai
+      SPRING_DATASOURCE_USERNAME: tw40
+      SPRING_DATASOURCE_PASSWORD: password
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on:
+      - db
