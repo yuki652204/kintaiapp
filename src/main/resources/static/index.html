@@ -6,7 +6,10 @@
   <style>
     body { font-family: Arial, sans-serif; background: #f4f6f8; margin: 0; padding: 40px; }
     .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    h1 { text-align: center; }
+    h1 { text-align: center; margin-bottom: 4px; }
+    .user-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-size: 14px; color: #555; }
+    .logout-btn { background: #888; color: white; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+    .logout-btn:hover { background: #555; }
     button { width: 100%; padding: 15px; margin: 10px 0; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; transition: opacity 0.3s; }
     button:disabled { opacity: 0.3; cursor: not-allowed; }
     .in   { background: #4CAF50; color: white; }
@@ -27,6 +30,13 @@
 <body>
 <div class="container">
   <h1>勤怠管理</h1>
+  <div class="user-bar">
+    <span id="username-label">ログイン中: ...</span>
+    <form action="/logout" method="post" style="margin:0">
+      <input type="hidden" name="_csrf" id="csrf-token">
+      <button type="submit" class="logout-btn">ログアウト</button>
+    </form>
+  </div>
   <div class="status out-office" id="status">退勤中</div>
   <button class="in"  id="btn-in"  onclick="clockIn()">出勤</button>
   <button class="out" id="btn-out" onclick="clockOut()">退勤</button>
@@ -57,13 +67,11 @@ function setStatus(isWorking) {
 async function clockIn() {
   const res = await fetch("/attendance/clock-in", { method: "POST" });
   msg("✅ " + await res.text());
-  setStatus(true);
   showList();
 }
 async function clockOut() {
   const res = await fetch("/attendance/clock-out", { method: "POST" });
   msg("🔴 " + await res.text());
-  setStatus(false);
   showList();
 }
 async function showList() {
@@ -71,8 +79,9 @@ async function showList() {
   const data = await res.json();
   msg("📋 " + data.length + "件");
   if (data.length > 0) {
-    const latest = data[data.length - 1];
+    const latest = data[0];
     setStatus(latest.clockOut === null);
+    document.getElementById("username-label").textContent = "ログイン中: " + latest.username;
   } else {
     setStatus(false);
   }
@@ -86,6 +95,17 @@ async function showList() {
   html += "</tbody></table>";
   document.getElementById("table-area").innerHTML = html;
 }
+
+// CSRFトークンを取得してログアウトフォームにセット
+async function getCsrf() {
+  const res = await fetch("/csrf-token");
+  if (res.ok) {
+    const data = await res.json();
+    document.getElementById("csrf-token").value = data.token;
+  }
+}
+
+getCsrf();
 showList();
 </script>
 </body>
