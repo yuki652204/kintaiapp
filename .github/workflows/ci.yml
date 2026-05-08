@@ -27,7 +27,7 @@ jobs:
         key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
 
     - name: ビルド＆テスト
-      run: ./mvnw clean package -DskipTests
+      run: ./mvnw clean package 
 
     - name: Dockerイメージをビルド
       run: docker build -t kintai-app:latest .
