@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kintai-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kintai-app
+  template:
+    metadata:
+      labels:
+        app: kintai-app
+    spec:
+      containers:
+      - name: kintai-app
+        image: kintai-app:latest
+        imagePullPolicy: Never
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:postgresql://postgres:5432/kintai
+        - name: SPRING_DATASOURCE_USERNAME
+          value: tw40
+        - name: SPRING_DATASOURCE_PASSWORD
+          value: password
+        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
+          value: update
+        ports:
+        - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kintai-app
+spec:
+  selector:
+    app: kintai-app
+  type: NodePort
+  ports:
+  - port: 8080
+    targetPort: 8080
+    nodePort: 30080
