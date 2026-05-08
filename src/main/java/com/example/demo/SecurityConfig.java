@@ -5,6 +5,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 
@@ -12,16 +14,21 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+    @Bean
     public UserDetailsService userDetailsService() {
         var manager = new InMemoryUserDetailsManager();
-        manager.createUser(User.withDefaultPasswordEncoder()
+        manager.createUser(User.builder()
             .username("yamada")
-            .password("pass1234")
+            .password("$2a$10$yYWV.91yIYgyd17e/YKSye7oSi629vm38BOsNz4CbEdo/BNLQeP2G")
             .roles("USER")
             .build());
-        manager.createUser(User.withDefaultPasswordEncoder()
+        manager.createUser(User.builder()
             .username("tanaka")
-            .password("pass1234")
+            .password("$2a$10$5CoU0zva9MZQHa4mJ0nFM.0gvYd4BB9j4fw08qwFAuIcKjvKHfFg2")
             .roles("USER")
             .build());
         return manager;
