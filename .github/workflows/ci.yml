@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: ソースコードを取得
+      uses: actions/checkout@v4
+
+    - name: Java 21をセットアップ
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+
+    - name: Mavenキャッシュ
+      uses: actions/cache@v4
+      with:
+        path: ~/.m2
+        key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+
+    - name: ビルド＆テスト
+      run: ./mvnw clean package -DskipTests
+
+    - name: Dockerイメージをビルド
+      run: docker build -t kintai-app:latest .
+
+    - name: ビルド成功通知
+      run: echo "ビルド成功！"
